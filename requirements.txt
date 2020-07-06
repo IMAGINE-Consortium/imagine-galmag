@@ -1,2 +1,2 @@
-galmag>=galmag-1.3.0a0
-imagine>=2.0.0a0
+galmag>=1.2.0a0
+imagine>=2.0.0a1

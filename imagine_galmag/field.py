@@ -53,15 +53,12 @@ class GalMagMagneticFieldBase(MagneticField):
 
         return B_array << u.microgauss
 
-    
-    
+
 class GalMagDiskField(GalMagMagneticFieldBase):
     """
     An IMAGINE field constructed using GalMag's disk magnetic field
     """
-    field_name = 'galmag_disk_magnetic_field'
-
-    stochastic_field = False 
+    NAME = 'galmag_disk_magnetic_field'
 
     def __init__(self, grid=None, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
@@ -102,15 +99,12 @@ class GalMagDiskField(GalMagMagneticFieldBase):
                           for i in range(self._number_of_modes)} )
         return checklist
 
-    
-        
+            
 class GalMagHaloField(GalMagMagneticFieldBase):
     """
     An IMAGINE field constructed using GalMag's halo magnetic field
     """
-    field_name = 'galmag_halo_magnetic_field'
-
-    stochastic_field = False 
+    NAME = 'galmag_halo_magnetic_field' 
 
     def __init__(self, grid=None, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
@@ -138,7 +132,7 @@ class GalMagHaloField(GalMagMagneticFieldBase):
                                'halo_dynamo_type': halo_dynamo_type,
                                'halo_rotation_function': halo_rotation_function,
                                'halo_alpha_function': halo_alpha_function}
-         
+
     @property
     def field_checklist(self):
         return {'halo_turbulent_induction': True,
