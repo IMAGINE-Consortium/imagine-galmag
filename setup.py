@@ -10,7 +10,7 @@ with open('requirements.txt', 'r') as f:
     requirements = f.read().splitlines()
 
 # Read the __version__.py file
-with open('imagine-galmag/__version__.py', 'r') as f:
+with open('imagine_galmag/__version__.py', 'r') as f:
     vf = f.read()
 
 # Obtain version from read-in __version__.py file

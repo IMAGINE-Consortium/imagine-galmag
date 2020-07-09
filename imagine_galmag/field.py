@@ -1,10 +1,11 @@
-from imagine import MagneticField
 import astropy.units as u
 import numpy as np
 from galmag.B_generators import B_generator_disk
 from galmag.B_generators import B_generator_halo
 import galmag.disk_profiles as disk_prof
 import galmag.halo_profiles as halo_prof
+import imagine
+from imagine.fields import MagneticField
 
 __all__ = ['GalMagDiskField', 'GalMagHaloField']
 
@@ -14,7 +15,7 @@ class GalMagMagneticFieldBase(MagneticField):
     """
     Base class for GalMag fields
     """
-    def __init__(self, grid=None, parameters=dict(), ensemble_size=None,
+    def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False):
         
         self.keep_galmag_field = keep_galmag_field
@@ -31,7 +32,8 @@ class GalMagMagneticFieldBase(MagneticField):
         # are stored (by subclasses) in the following attribute
         self._field_options = {}
         
-        super().__init__(grid, parameters, ensemble_size, ensemble_seeds, dependencies)
+        super().__init__(grid=grid, parameters=parameters, ensemble_size=ensemble_size,
+                         ensemble_seeds=ensemble_seeds, dependencies=dependencies)
     
     def compute_field(self, seed):
         
@@ -60,7 +62,7 @@ class GalMagDiskField(GalMagMagneticFieldBase):
     """
     NAME = 'galmag_disk_magnetic_field'
 
-    def __init__(self, grid=None, parameters=dict(), ensemble_size=None,
+    def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
                  number_of_modes=4,
                  disk_shear_function=disk_prof.Clemens_Milky_Way_shear_rate, # S(R)
@@ -106,7 +108,7 @@ class GalMagHaloField(GalMagMagneticFieldBase):
     """
     NAME = 'galmag_halo_magnetic_field' 
 
-    def __init__(self, grid=None, parameters=dict(), ensemble_size=None,
+    def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
                  halo_symmetric_field=True,
                  halo_rotation_function=halo_prof.simple_V,
