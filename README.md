@@ -31,14 +31,14 @@ disk_field = GalMagDiskField(grid=grid, parameters={},
                              keep_galmag_field=True)
 ```
 
-These fields can than be provided to an IMAGINE `Simulator`.
+These fields can then be provided to an IMAGINE `Simulator`.
 
 
 ### Accessing the original GalMag field
 
 If the optional keyword argument `keep_galmag_field` is set to `True`, the GalMag field 
 component object is saved to the attribute `galmag` after the field is evaluated. 
-Below we exemplify how to use the GalMag associated object to get the Phi component of 
+Below we exemplify how to use the GalMag associated object to get the &phi; component of 
 the magnetic field.
 
 ```python
