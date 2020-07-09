@@ -97,10 +97,23 @@ class GalMagDiskField(GalMagMagneticFieldBase):
                      'disk_ref_r_cylindrical': True}
         
         # Includes individual parameters for each disk mode
-        checklist.update( {'mode_{0:d}'.format(i):True 
+        checklist.update( {'mode_{0:d}'.format(i+1):True 
                           for i in range(self._number_of_modes)} )
         return checklist
-
+    
+    def compute_field(self, seed):
+        
+        disk_mode_norm = []
+        for i in range(self._number_of_modes):
+            name = 'mode_{0:d}'.format(i+1)
+            if name in self.parameters:
+                disk_mode_norm.append(self.parameters[name])
+            else:
+                disk_mode_norm.append(0)
+        self.parameters['disk_modes_normalization'] = np.array(disk_mode_norm)
+        
+        return super().compute_field(seed)
+        
             
 class GalMagHaloField(GalMagMagneticFieldBase):
     """
