@@ -1,15 +1,22 @@
+# %% IMPORTS
+
+# Package imports
 import astropy.units as u
 import numpy as np
+
+# GalMag imports
 from galmag.B_generators import B_generator_disk
 from galmag.B_generators import B_generator_halo
 import galmag.disk_profiles as disk_prof
 import galmag.halo_profiles as halo_prof
+
+
+# IMAGINE imports
 import imagine
 from imagine.fields import MagneticField
+from imagine.tools import req_attr
 
 __all__ = ['GalMagDiskField', 'GalMagHaloField']
-
-
 
 class GalMagMagneticFieldBase(MagneticField):
     """
@@ -35,23 +42,40 @@ class GalMagMagneticFieldBase(MagneticField):
         super().__init__(grid=grid, parameters=parameters, ensemble_size=ensemble_size,
                          ensemble_seeds=ensemble_seeds, dependencies=dependencies)
 
+    @property
+    @req_attr
+    def parameter_units(self):
+        """
+        Units used by GalMag for the parameters
+        """
+        return self.PARAMETER_UNITS
+
     def compute_field(self, seed):
 
         if self.galmag is not None:
             galmag_B = self.galmag
         else:
-            parameters = self.parameters.copy()
+            parameters = {}
+            for pname, pval in self.parameters.items():
+                if pname in self.parameter_units:
+                    # Converts to default parameter units
+                    # (if unit is absent, assumes default)
+                    pval = (pval << self.parameter_units[pname]).value
+                parameters[pname] = pval
+
+            # Includes GalMag "switch-like" parameters
             parameters.update(self._field_options)
+            # Creates the field using GalMag's generator
             galmag_B = self.galmag_gen.get_B_field(**parameters)
+
+            if self.keep_galmag_field:
+                self.galmag = galmag_B
 
         B_array = np.empty(self.data_shape)
         # and saves the pre-computed components
         B_array[:,:,:,0] = galmag_B.x
         B_array[:,:,:,1] = galmag_B.y
         B_array[:,:,:,2] = galmag_B.z
-
-        if self.keep_galmag_field:
-            self.galmag = galmag_B
 
         return B_array << u.microgauss
 
@@ -63,10 +87,16 @@ class GalMagDiskField(GalMagMagneticFieldBase):
     NAME = 'galmag_disk_magnetic_field'
     # The following is updated dynamically with the normalization of
     # different eigenmodes
-    PARAMETER_NAMES = ['disk_modes_normalization', 'disk_height',
+    PARAMETER_NAMES = ['disk_height',
                        'disk_radius', 'disk_turbulent_induction',
                        'disk_dynamo_number', 'disk_regularization_radius',
                        'disk_ref_r_cylindrical']
+    PARAMETER_UNITS = {'disk_height': u.kpc,
+                       'disk_radius': u.kpc,
+                       'disk_turbulent_induction': u.dimensionless_unscaled,
+                       'disk_dynamo_number': u.dimensionless_unscaled,
+                       'disk_regularization_radius': u.kpc,
+                       'disk_ref_r_cylindrical': u.kpc}
 
     def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
@@ -99,18 +129,28 @@ class GalMagDiskField(GalMagMagneticFieldBase):
                       for i in range(self._number_of_modes)]
         return self.PARAMETER_NAMES + modes_list
 
-    def compute_field(self, seed):
+    @property
+    def parameter_units(self):
+        # Includes individual parameters for each disk mode
+        param_units_actual = {'mode_{0:d}'.format(i+1): u.microgauss
+                              for i in range(self._number_of_modes)}
+        param_units_actual.update(self.PARAMETER_UNITS)
+        return param_units_actual
 
+    def compute_field(self, seed):
         disk_mode_norm = []
         for i in range(self._number_of_modes):
             name = 'mode_{0:d}'.format(i+1)
             if name in self.parameters:
-                disk_mode_norm.append(self.parameters[name])
+                disk_mode_norm.append((self.parameters[name] << u.microgauss).value)
             else:
                 disk_mode_norm.append(0)
+        # Provisionally includes disk modes parameter
         self.parameters['disk_modes_normalization'] = np.array(disk_mode_norm)
-
-        return super().compute_field(seed)
+        field = super().compute_field(seed)
+        # Restores actual parameters
+        del self.parameters['disk_modes_normalization']
+        return field
 
 
 class GalMagHaloField(GalMagMagneticFieldBase):
@@ -127,6 +167,16 @@ class GalMagHaloField(GalMagMagneticFieldBase):
                        'halo_ref_Bphi',
                        'halo_rotation_characteristic_radius',
                        'halo_rotation_characteristic_height']
+
+    PARAMETER_UNITS = {'halo_turbulent_induction': u.dimensionless_unscaled,
+                       'halo_rotation_induction': u.dimensionless_unscaled,
+                       'halo_radius': u.kpc,
+                       'halo_ref_radius': u.kpc,
+                       'halo_ref_z': u.kpc,
+                       'halo_ref_Bphi': u.kpc,
+                       'halo_rotation_characteristic_radius': u.kpc,
+                       'halo_rotation_characteristic_height': u.kpc}
+
 
     def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
