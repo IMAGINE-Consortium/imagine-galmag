@@ -88,15 +88,19 @@ class GalMagDiskField(GalMagMagneticFieldBase):
     # The following is updated dynamically with the normalization of
     # different eigenmodes
     PARAMETER_NAMES = ['disk_height',
-                       'disk_radius', 'disk_turbulent_induction',
-                       'disk_dynamo_number', 'disk_regularization_radius',
-                       'disk_ref_r_cylindrical']
+                       'disk_radius',
+                       'disk_regularization_radius',
+                       'disk_ref_r_cylindrical',
+                       'disk_shear_normalization',
+                       'disk_turbulent_diffusivity',
+                       'disk_alpha_effect']
     PARAMETER_UNITS = {'disk_height': u.kpc,
                        'disk_radius': u.kpc,
-                       'disk_turbulent_induction': u.dimensionless_unscaled,
-                       'disk_dynamo_number': u.dimensionless_unscaled,
                        'disk_regularization_radius': u.kpc,
-                       'disk_ref_r_cylindrical': u.kpc}
+                       'disk_ref_r_cylindrical': u.kpc,
+                       'disk_shear_normalization': 1/u.s,
+                       'disk_turbulent_diffusivity': u.cm*u.cm/u.s,
+                       'disk_alpha_effect': u.km/u.s}
 
     def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
@@ -138,6 +142,7 @@ class GalMagDiskField(GalMagMagneticFieldBase):
         return param_units_actual
 
     def compute_field(self, seed):
+        # Constructs GalMag's native disk_modes_normalization parameters
         disk_mode_norm = []
         for i in range(self._number_of_modes):
             name = 'mode_{0:d}'.format(i+1)
@@ -147,9 +152,28 @@ class GalMagDiskField(GalMagMagneticFieldBase):
                 disk_mode_norm.append(0)
         # Provisionally includes disk modes parameter
         self.parameters['disk_modes_normalization'] = np.array(disk_mode_norm)
+
+        # Shorthands (for clarity)
+        h = self.parameters['disk_height']
+        S = self.parameters['disk_shear_normalization']
+        alpha = self.parameters['disk_alpha_effect']
+        beta = self.parameters['disk_turbulent_diffusivity']
+
+        # Computes Ralpha
+        Ralpha = ( h*alpha/beta ).to_value(u.dimensionless_unscaled)
+        self.parameters['disk_turbulent_induction'] = Ralpha
+        # Computes local dynamo number
+        Romega = ( h**2*S/beta ).to_value(u.dimensionless_unscaled)
+        self.parameters['disk_dynamo_number'] = Ralpha*Romega
+
+        # Constructs field using superclass
         field = super().compute_field(seed)
-        # Restores actual parameters
+
+        # Removes temporary parameters
         del self.parameters['disk_modes_normalization']
+        del self.parameters['disk_dynamo_number']
+        del self.parameters['disk_turbulent_induction']
+
         return field
 
 
@@ -159,23 +183,25 @@ class GalMagHaloField(GalMagMagneticFieldBase):
     """
     NAME = 'galmag_halo_magnetic_field'
 
-    PARAMETER_NAMES = ['halo_turbulent_induction',
-                       'halo_rotation_induction',
-                       'halo_radius',
+    PARAMETER_NAMES = ['halo_radius',
                        'halo_ref_radius',
                        'halo_ref_z',
                        'halo_ref_Bphi',
                        'halo_rotation_characteristic_radius',
-                       'halo_rotation_characteristic_height']
+                       'halo_rotation_characteristic_height',
+                       'halo_rotation_normalization',
+                       'halo_turbulent_diffusivity',
+                       'halo_alpha_effect']
 
-    PARAMETER_UNITS = {'halo_turbulent_induction': u.dimensionless_unscaled,
-                       'halo_rotation_induction': u.dimensionless_unscaled,
-                       'halo_radius': u.kpc,
+    PARAMETER_UNITS = {'halo_radius': u.kpc,
                        'halo_ref_radius': u.kpc,
                        'halo_ref_z': u.kpc,
                        'halo_ref_Bphi': u.kpc,
                        'halo_rotation_characteristic_radius': u.kpc,
-                       'halo_rotation_characteristic_height': u.kpc}
+                       'halo_rotation_characteristic_height': u.kpc,
+                       'halo_rotation_normalization': u.km/u.s,
+                       'halo_turbulent_diffusivity': u.cm*u.cm/u.s,
+                       'halo_alpha_effect': u.km/u.s}
 
 
     def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
@@ -205,3 +231,23 @@ class GalMagHaloField(GalMagMagneticFieldBase):
                                'halo_rotation_function': halo_rotation_function,
                                'halo_alpha_function': halo_alpha_function}
 
+    def compute_field(self, seed):
+        # Shorthands (for clarity)
+        r = self.parameters['halo_radius']
+        V0 = self.parameters['halo_rotation_normalization']
+        beta = self.parameters['halo_turbulent_diffusivity']
+        alpha = self.parameters['halo_alpha_effect']
+
+        # Computes Ralpha
+        self.parameters['halo_turbulent_induction'] = r*alpha/beta
+        # Computes Romega
+        self.parameters['halo_rotation_induction'] = -r*V/beta
+
+        # Constructs field using superclass
+        field = super().compute_field(seed)
+
+        # Removes temporary parameters
+        del self.parameters['halo_rotation_induction']
+        del self.parameters['halo_turbulent_induction']
+
+        return field
