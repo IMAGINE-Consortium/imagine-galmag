@@ -104,12 +104,15 @@ class GalMagDiskField(GalMagMagneticFieldBase):
 
     def __init__(self, grid, *, parameters=dict(), ensemble_size=None,
                  ensemble_seeds=None, dependencies={}, keep_galmag_field=False,
-                 number_of_modes=4,
+                 number_of_modes=None,
                  disk_shear_function=disk_prof.Clemens_Milky_Way_shear_rate, # S(R)
                  disk_rotation_function=disk_prof.Clemens_Milky_Way_rotation_curve, # V(R)
                  disk_height_function=disk_prof.exponential_scale_height, # h(R)
                  disk_field_decay=True, disk_newman_boundary_condition_envelope=False,
                  ):
+
+        if number_of_modes is None:
+            number_of_modes = max([int(k[5:]) for k in parameters if 'mode_' in k])
 
         self._number_of_modes = number_of_modes
         self.galmag_generator_class = B_generator_disk
@@ -196,7 +199,7 @@ class GalMagHaloField(GalMagMagneticFieldBase):
     PARAMETER_UNITS = {'halo_radius': u.kpc,
                        'halo_ref_radius': u.kpc,
                        'halo_ref_z': u.kpc,
-                       'halo_ref_Bphi': u.kpc,
+                       'halo_ref_Bphi': u.microgauss,
                        'halo_rotation_characteristic_radius': u.kpc,
                        'halo_rotation_characteristic_height': u.kpc,
                        'halo_rotation_normalization': u.km/u.s,
@@ -234,14 +237,16 @@ class GalMagHaloField(GalMagMagneticFieldBase):
     def compute_field(self, seed):
         # Shorthands (for clarity)
         r = self.parameters['halo_radius']
-        V0 = self.parameters['halo_rotation_normalization']
+        V = self.parameters['halo_rotation_normalization']
         beta = self.parameters['halo_turbulent_diffusivity']
         alpha = self.parameters['halo_alpha_effect']
 
         # Computes Ralpha
-        self.parameters['halo_turbulent_induction'] = r*alpha/beta
+        Ralpha = ( r*alpha/beta ).to_value(u.dimensionless_unscaled)
+        self.parameters['halo_turbulent_induction'] = Ralpha
         # Computes Romega
-        self.parameters['halo_rotation_induction'] = -r*V/beta
+        Romega = ( -r*V/beta  ).to_value(u.dimensionless_unscaled)
+        self.parameters['halo_rotation_induction'] = Romega
 
         # Constructs field using superclass
         field = super().compute_field(seed)
